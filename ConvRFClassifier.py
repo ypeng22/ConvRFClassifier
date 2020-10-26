@@ -8,7 +8,9 @@ import torch
 class ConvRFClassifier(object):
     
     #TODO: pass in custom ConvRF args
-    def __init__(self, layers = 1, kernel_size = (5, None), stride = (2, None), n_estimators = 100, num_outputs = 10):
+    def __init__(self, layers = 1, kernel_size = (5,), stride = (2,), n_estimators = 100, num_outputs = 10):
+        if not (len(kernel_size) == layers and len(stride) == layers):
+            raise Exception('Length of kernel_sizes and strides must be same as layers')
         self.kernel_size = kernel_size
         self.stride = stride
         self.kernel_forests = [None] * layers
@@ -19,7 +21,8 @@ class ConvRFClassifier(object):
 
 
     def _convolve(self, images, kernel_size, stride, labels=None, flatten=False):
-
+        if images.shape[0] != images.shape[1]:
+            raise Exception('Only square images are allowed')
         batch_size, in_dim, _, num_channels = images.shape
         out_dim = int((in_dim - kernel_size) / stride) + 1  # calculate output dimensions
 
@@ -72,8 +75,8 @@ class ConvRFClassifier(object):
 
 
     def convolve_predict(self, images):
-        #TODO check for not fitted kernel_forest
-        if not self.kernel_forests:
+        
+        if not self.kernel_forests[0]:
             raise Exception("Should fit training data before predicting")
         
         for layer in range(self.layers):
