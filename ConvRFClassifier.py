@@ -153,6 +153,7 @@ class ConvRFClassifier(BaseEstimator):
             kernel_predictions = np.zeros((images.shape[0], out_dim, out_dim, self.num_outputs))
             for i in range(out_dim):
                 for j in range(out_dim):
+                    #convolved_image[:, i, j] = self.kernel_forests[i][j].predict_proba(sub_images[:, i, j])
                     kernel_predictions[:, i, j] = self.kernel_forests[layer][i][j].apply(sub_images[:, i, j])
             images = kernel_predictions           
         return images  

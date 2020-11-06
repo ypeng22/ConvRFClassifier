@@ -1,25 +1,11 @@
 # general imports
-import random
 import numpy as np
-
-from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score
-from sklearn.metrics import confusion_matrix
-
-import torch
-import torch.nn as nn
-import torch.utils.data as utils
-from torch.autograd import Variable
-import torch.optim as optim
 import torchvision.datasets as datasets
-import torchvision.transforms as transforms
-import torch.nn.functional as F
-
 import matplotlib.pyplot as plt
-import matplotlib
 import seaborn as sns; sns.set()
 import ConvRFClassifier
-
+from sklearn.utils.estimator_checks import check_estimator
 
 plt.rcParams["legend.loc"] = "best"
 plt.rcParams['figure.facecolor'] = 'white'
@@ -43,12 +29,9 @@ cifar_testset = datasets.CIFAR10(root='./data', train=False, download=True, tran
 cifar_test_images = normalize(cifar_testset.data)
 cifar_test_labels = np.array(cifar_testset.targets)
 
-print(np.min(cifar_train_images))
-print(np.max(cifar_train_images))
-
 class1 = 0
 class2 = 2
-fraction_of_train_samples = .002
+fraction_of_train_samples = .02
 
 num_train_samples_class_1 = int(np.sum(cifar_train_labels==class1) * fraction_of_train_samples)
 num_train_samples_class_2 = int(np.sum(cifar_train_labels==class2) * fraction_of_train_samples)
@@ -61,9 +44,21 @@ cifar_tl = np.concatenate([np.repeat(0, num_train_samples_class_1), np.repeat(1,
 cifar_testi = np.concatenate([cifar_test_images[cifar_test_labels==class1], cifar_test_images[cifar_test_labels==class2]])
 cifar_testl = np.concatenate([np.repeat(0, np.sum(cifar_test_labels==class1)), np.repeat(1, np.sum(cifar_test_labels==class2))])
  
- 
-CRFC = ConvRFClassifier.ConvRFClassifier()
 
+#Test with default
+CRFC = ConvRFClassifier.ConvRFClassifier()
 CRFC.fit(cifar_ti, cifar_tl)
 predict = CRFC.predict(cifar_testi)
+print(accuracy_score(cifar_testl, predict))
+
+#Test with 2 layers
+CRFC2 = ConvRFClassifier.ConvRFClassifier(layers = 2, kernel_size = (5, 5), stride = (2, 2))
+CRFC2.fit(cifar_ti, cifar_tl)
+predict = CRFC2.predict(cifar_testi)
+print(accuracy_score(cifar_testl, predict))
+
+#Test with 3 layers
+CRFC2 = ConvRFClassifier.ConvRFClassifier(layers = 3, kernel_size = (5, 5, 5), stride = (2, 2, 2))
+CRFC2.fit(cifar_ti, cifar_tl)
+predict = CRFC2.predict(cifar_testi)
 print(accuracy_score(cifar_testl, predict))
