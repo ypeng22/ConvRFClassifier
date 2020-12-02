@@ -10,7 +10,8 @@ import torchvision.transforms as transforms
 import torch.nn.functional as F
 import ConvRFClassifier
 import matplotlib.pyplot as plt
-import matplotlib
+import matplotlib.image as mpimp
+
 import seaborn as sns; sns.set()
 plt.rcParams["legend.loc"] = "best"
 plt.rcParams['figure.facecolor'] = 'white'
@@ -148,6 +149,18 @@ def run_own_two_layer(train_images, train_labels, test_images, test_labels, frac
     test_images = np.concatenate([test_images[test_labels==class1], test_images[test_labels==class2]])
     test_labels = np.concatenate([np.repeat(0, np.sum(test_labels==class1)), np.repeat(1, np.sum(test_labels==class2))])
     
+    #plt.figure()
+    print(len(train_images))
+    f, a = plt.subplots(2, 10)
+    for i in range(10):
+        a[0][i].axis('off')
+        a[0][i].imshow(train_images[i])
+    for i in range(1,11):
+        #plt.figure()
+        a[1][i - 1].axis('off')
+        a[1][i - 1].imshow(train_images[-i])
+    plt.show()
+    return
     ## Train
     conv2 = ConvRFClassifier.ConvRFClassifier(layers = 2, kernel_size = (10,7), stride = (2,1))
     conv2.fit(train_images, train_labels)
@@ -225,9 +238,9 @@ def run_cnn(cnn_model, train_images, train_labels, test_images, test_labels, fra
 
    # accuracy vs num training samples (naive_rf)
 two_layer_convrf = list()
-fraction_of_train_samples_space = np.geomspace(0.01, 1.0, num=10)
+fraction_of_train_samples_space = np.geomspace(0.91, 1.0, num=10)
 for fraction_of_train_samples in fraction_of_train_samples_space:
-    best_accuracy = np.mean([run_own_two_layer(cifar_train_images, cifar_train_labels, cifar_test_images, cifar_test_labels, fraction_of_train_samples, 1, 9) for _ in range(2)])
+    best_accuracy = np.mean([run_own_two_layer(cifar_train_images, cifar_train_labels, cifar_test_images, cifar_test_labels, fraction_of_train_samples, 3, 4) for _ in range(1)])
     two_layer_convrf.append(best_accuracy)
     print("Train Fraction:", str(fraction_of_train_samples))
     print("Accuracy:", str(best_accuracy))

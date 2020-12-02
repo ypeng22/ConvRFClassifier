@@ -129,7 +129,7 @@ class ConvRFClassifier(BaseEstimator):
             
             #initiate another array to hold kernels for each image segment
             self.kernel_forests[layer] = [[0]*out_dim for _ in range(out_dim)]
-            convolved_image = np.zeros((images.shape[0], out_dim, out_dim, self.num_outputs))
+            convolved_image = np.zeros((images.shape[0], out_dim, out_dim, 1))
             
             #iterate through length and width of convolved image segments
             for i in range(out_dim):
@@ -139,7 +139,7 @@ class ConvRFClassifier(BaseEstimator):
                     #fit the kernels
                     self.kernel_forests[layer][i][j].fit(sub_images[:, i, j], sub_labels[:, i, j])
                     #convolution step, image segment -> int
-                    convolved_image[:, i, j] = self.kernel_forests[layer][i][j].apply(sub_images[:, i, j])
+                    convolved_image[:, i, j] = self.kernel_forests[layer][i][j].predict_proba(sub_images[:, i, j])[:,1][:,None]
             images = convolved_image
         return images
 
@@ -166,12 +166,12 @@ class ConvRFClassifier(BaseEstimator):
             sub_images, _, out_dim = self.segment(images, self.kernel_size[layer], self.stride[layer], flatten=True)
             
             #initialize convolved images
-            kernel_predictions = np.zeros((images.shape[0], out_dim, out_dim, self.num_outputs))
+            kernel_predictions = np.zeros((images.shape[0], out_dim, out_dim, 1))
             for i in range(out_dim):
                 for j in range(out_dim):
-                    #convolved_image[:, i, j] = self.kernel_forests[i][j].predict_proba(sub_images[:, i, j])
+                    kernel_predictions[:, i, j] = self.kernel_forests[layer][i][j].predict_proba(sub_images[:, i, j])[:,1][:,None]
                     #apply convolution
-                    kernel_predictions[:, i, j] = self.kernel_forests[layer][i][j].apply(sub_images[:, i, j])
+                    #kernel_predictions[:, i, j] = self.kernel_forests[layer][i][j].apply(sub_images[:, i, j])
             images = kernel_predictions           
         return images  
  

@@ -1,5 +1,6 @@
 # general imports
 import numpy as np
+import sklearn
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score
 import torch
@@ -11,11 +12,13 @@ import torch.nn.functional as F
 import ConvRFClassifier
 import matplotlib.pyplot as plt
 import matplotlib
+
 import seaborn as sns; sns.set()
 plt.rcParams["legend.loc"] = "best"
 plt.rcParams['figure.facecolor'] = 'white'
 #%matplotlib inline
 
+names = ['airplane', 'automobile', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship', 'truck']
 
 # filter python warnings
 import warnings
@@ -44,6 +47,7 @@ cifar_testset = datasets.CIFAR10(root='./data', train=False, download=True, tran
 cifar_test_images = normalize(cifar_testset.data)
 cifar_test_labels = np.array(cifar_testset.targets)
 
+
 # transform
 transform = transforms.Compose(
     [transforms.ToTensor(),
@@ -51,7 +55,7 @@ transform = transforms.Compose(
 trainset = datasets.CIFAR10(root='./data', train=True,
                                         download=True, transform=transform)
 testset = datasets.CIFAR10(root='./data', train=False,
-                                       download=True, transform=transform) 
+                                       download=True, transform=transform)
     
 # define a simple CNN arhcitecture
 class SimpleCNNOneFilter(torch.nn.Module):
@@ -96,7 +100,7 @@ class SimpleCNN32Filter2Layers(torch.nn.Module):
         return(x)
     
     
-def run_naive_rf(train_images, train_labels, test_images, test_labels, fraction_of_train_samples, class1=3, class2=5):
+def run_rf(model, train_images, train_labels, test_images, test_labels, fraction_of_train_samples):
     num_train_samples_class_1 = int(np.sum(train_labels==class1) * fraction_of_train_samples)
     num_train_samples_class_2 = int(np.sum(train_labels==class2) * fraction_of_train_samples)
     
@@ -108,54 +112,13 @@ def run_naive_rf(train_images, train_labels, test_images, test_labels, fraction_
     test_images = np.concatenate([test_images[test_labels==class1], test_images[test_labels==class2]])
     test_labels = np.concatenate([np.repeat(0, np.sum(test_labels==class1)), np.repeat(1, np.sum(test_labels==class2))])
 
-    # Train
-    clf = RandomForestClassifier(n_estimators=100, n_jobs = -1)
-    clf.fit(train_images.reshape(-1, 32*32*3), train_labels)
+    if isinstance(model, sklearn.ensemble.RandomForestClassifier):
+        train_images = train_images.reshape(-1, 32*32*3)
+        test_images = test_images.reshape(-1, 32*32*3)
+    model.fit(train_images, train_labels)
     # Test
-    test_preds = clf.predict(test_images.reshape(-1, 32*32*3))
+    test_preds = model.predict(test_images)
     return accuracy_score(test_labels, test_preds)
-
-def run_own_one_layer(train_images, train_labels, test_images, test_labels, fraction_of_train_samples, class1=3, class2=5):
-    num_train_samples_class_1 = int(np.sum(train_labels==class1) * fraction_of_train_samples)
-    num_train_samples_class_2 = int(np.sum(train_labels==class2) * fraction_of_train_samples)
-    
-    # get only train images and labels for class 1 and class 2
-    train_images = np.concatenate([train_images[train_labels==class1][:num_train_samples_class_1], train_images[train_labels==class2][:num_train_samples_class_2]])
-    train_labels = np.concatenate([np.repeat(0, num_train_samples_class_1), np.repeat(1, num_train_samples_class_2)])
-
-    # get only test images and labels for class 1 and class 2
-    test_images = np.concatenate([test_images[test_labels==class1], test_images[test_labels==class2]])
-    test_labels = np.concatenate([np.repeat(0, np.sum(test_labels==class1)), np.repeat(1, np.sum(test_labels==class2))])
-    
-    ## Train
-    conv1 = ConvRFClassifier.ConvRFClassifier(layers = 1, kernel_size = (10,), stride = (2,))
-    conv1.fit(train_images, train_labels)
-
-    #test
-    mnist_test_preds = conv1.predict(test_images)
-
-    return accuracy_score(test_labels, mnist_test_preds)
-   
-def run_own_two_layer(train_images, train_labels, test_images, test_labels, fraction_of_train_samples, class1=3, class2=5):
-    num_train_samples_class_1 = int(np.sum(train_labels==class1) * fraction_of_train_samples)
-    num_train_samples_class_2 = int(np.sum(train_labels==class2) * fraction_of_train_samples)
-    
-    # get only train images and labels for class 1 and class 2
-    train_images = np.concatenate([train_images[train_labels==class1][:num_train_samples_class_1], train_images[train_labels==class2][:num_train_samples_class_2]])
-    train_labels = np.concatenate([np.repeat(0, num_train_samples_class_1), np.repeat(1, num_train_samples_class_2)])
-
-    # get only test images and labels for class 1 and class 2
-    test_images = np.concatenate([test_images[test_labels==class1], test_images[test_labels==class2]])
-    test_labels = np.concatenate([np.repeat(0, np.sum(test_labels==class1)), np.repeat(1, np.sum(test_labels==class2))])
-    
-    ## Train
-    conv2 = ConvRFClassifier.ConvRFClassifier(layers = 2, kernel_size = (10,7), stride = (2,1))
-    conv2.fit(train_images, train_labels)
-
-    #test
-    mnist_test_preds = conv2.predict(test_images)
-
-    return accuracy_score(test_labels, mnist_test_preds)
 
 
 def cnn_train_test(cnn_model, y_train, y_test, fraction_of_train_samples, class1=3, class2=5):
@@ -221,93 +184,86 @@ def cnn_train_test(cnn_model, y_train, y_test, fraction_of_train_samples, class1
 def run_cnn(cnn_model, train_images, train_labels, test_images, test_labels, fraction_of_train_samples, class1=3, class2=5):
     return cnn_train_test(cnn_model, train_labels, test_labels, fraction_of_train_samples, class1, class2)
 
- 
-
-   # accuracy vs num training samples (naive_rf)
-two_layer_convrf = list()
-fraction_of_train_samples_space = np.geomspace(0.01, 1.0, num=10)
-for fraction_of_train_samples in fraction_of_train_samples_space:
-    best_accuracy = np.mean([run_own_two_layer(cifar_train_images, cifar_train_labels, cifar_test_images, cifar_test_labels, fraction_of_train_samples, 3, 5) for _ in range(2)])
-    two_layer_convrf.append(best_accuracy)
-    print("Train Fraction:", str(fraction_of_train_samples))
-    print("Accuracy:", str(best_accuracy))
-    
-# accuracy vs num training samples (one layer cnn)
-cnn_acc_vs_n = list()
-fraction_of_train_samples_space = np.geomspace(0.01, 1.0, num=10)
-for fraction_of_train_samples in fraction_of_train_samples_space:
-    best_accuracy = np.mean([run_cnn(SimpleCNNOneFilter, cifar_train_images, cifar_train_labels, cifar_test_images, cifar_test_labels, fraction_of_train_samples, 3, 5) for _ in range(2)])
-    cnn_acc_vs_n.append(best_accuracy)
-    print("Train Fraction:", str(fraction_of_train_samples))
-    print("Accuracy:", str(best_accuracy))
-   
-    
-   
-# accuracy vs num training samples (naive_rf)
-naive_rf_acc_vs_n = list()
-fraction_of_train_samples_space = np.geomspace(0.01, 1.0, num=10)
-for fraction_of_train_samples in fraction_of_train_samples_space:
-    best_accuracy = np.mean([run_naive_rf(cifar_train_images, cifar_train_labels, cifar_test_images, cifar_test_labels, fraction_of_train_samples, 3, 5) for _ in range(2)])
-    naive_rf_acc_vs_n.append(best_accuracy)
-    print("Train Fraction:", str(fraction_of_train_samples))
-    print("Accuracy:", str(best_accuracy))
-    
-# accuracy vs num training samples (naive_rf)
-one_layer_convrf = list()
-fraction_of_train_samples_space = np.geomspace(0.01, 1.0, num=10)
-for fraction_of_train_samples in fraction_of_train_samples_space:
-    best_accuracy = np.mean([run_own_one_layer(cifar_train_images, cifar_train_labels, cifar_test_images, cifar_test_labels, fraction_of_train_samples, 3, 5) for _ in range(2)])
-    one_layer_convrf.append(best_accuracy)
-    print("Train Fraction:", str(fraction_of_train_samples))
-    print("Accuracy:", str(best_accuracy))
-    
- 
-# accuracy vs num training samples (one layer cnn (32 filters))
-cnn32_acc_vs_n = list()
-fraction_of_train_samples_space = np.geomspace(0.01, 1.0, num=10)
-for fraction_of_train_samples in fraction_of_train_samples_space:
-    best_accuracy = np.mean([run_cnn(SimpleCNN32Filter, cifar_train_images, cifar_train_labels, cifar_test_images, cifar_test_labels, fraction_of_train_samples, 3, 5) for _ in range(2)])
-    cnn32_acc_vs_n.append(best_accuracy)
-    print("Train Fraction:", str(fraction_of_train_samples))
-    print("Accuracy:", str(best_accuracy))
-    
-
-# accuracy vs num training samples (two layer cnn (32 filters))
-cnn32_two_layer_acc_vs_n = list()
-fraction_of_train_samples_space = np.geomspace(0.01, 1.0, num=10)
-for fraction_of_train_samples in fraction_of_train_samples_space:
-    best_accuracy = np.mean([run_cnn(SimpleCNN32Filter2Layers, cifar_train_images, cifar_train_labels, cifar_test_images, cifar_test_labels, fraction_of_train_samples, 3, 5) for _ in range(3)])
-    cnn32_two_layer_acc_vs_n.append(best_accuracy)
-    print("Train Fraction:", str(fraction_of_train_samples))
-    print("Accuracy:", str(best_accuracy))
-    
-    
-plt.rcParams['figure.figsize'] = 13, 10
-plt.rcParams['font.size'] = 25
-plt.rcParams['legend.fontsize'] = 16.5
-plt.rcParams['legend.handlelength'] = 2.5
-plt.rcParams['figure.titlesize'] = 20
-plt.rcParams['xtick.labelsize'] = 15
-plt.rcParams['ytick.labelsize'] = 15
-
-fig, ax = plt.subplots() # create a new figure with a default 111 subplot
-ax.plot(fraction_of_train_samples_space*100, naive_rf_acc_vs_n, marker='X', markerfacecolor='red', markersize=10, color='green', linewidth=3, linestyle=":", label="Naive RF")
-ax.plot(fraction_of_train_samples_space*100, one_layer_convrf, marker='X', markerfacecolor='red', markersize=10, color='green', linewidth=3, linestyle="--", label="Deep Conv RF")
-ax.plot(fraction_of_train_samples_space*100, two_layer_convrf, marker='X', markerfacecolor='red', markersize=10, color='green', linewidth=3, label="Deep Conv RF Two Layer")
-
-ax.plot(fraction_of_train_samples_space*100, cnn_acc_vs_n, marker='X', markerfacecolor='red', markersize=10, color='orange', linewidth=3, linestyle=":", label="CNN")
-ax.plot(fraction_of_train_samples_space*100, cnn32_acc_vs_n, marker='X', markerfacecolor='red', markersize=10, color='orange', linewidth=3, linestyle="--", label="CNN (32 filters)")
-ax.plot(fraction_of_train_samples_space*100, cnn32_two_layer_acc_vs_n, marker='X', markerfacecolor='red', markersize=10, color='orange', linewidth=3, label="CNN Two Layer (32 filters)")
-
-ax.set_xlabel('Percentage of Train Samples', fontsize=18)
-ax.set_xscale('log')
-ax.set_xticks([i*100 for i in list(np.geomspace(0.01, 1.0, num=10))])
-ax.get_xaxis().set_major_formatter(matplotlib.ticker.ScalarFormatter())
-
-ax.set_ylabel('Accuracy', fontsize=18)
-# ax.set_ylim(0.68, 1)
-
-ax.set_title("3 (cat) vs 5 (dog) Classification", fontsize=18)
-plt.legend()
-plt.show()
+for class1 in range(10):
+    for class2 in range(class1 + 1, 10):
+        # accuracy vs num training samples (naive_rf)
+        naive_rf_acc_vs_n = list()
+        fraction_of_train_samples_space = np.geomspace(0.01, .1, num=10)
+        for fraction_of_train_samples in fraction_of_train_samples_space:
+            RF = RandomForestClassifier(n_estimators=100, n_jobs = -1)
+            best_accuracy = np.mean([run_rf(RF, cifar_train_images, cifar_train_labels, cifar_test_images, cifar_test_labels, fraction_of_train_samples) for _ in range(2)])
+            naive_rf_acc_vs_n.append(best_accuracy)
+            print("Train Fraction:", str(fraction_of_train_samples))
+            print("Accuracy:", str(best_accuracy))
+            
+        
+           # accuracy vs num training samples (naive_rf)
+        conv_rf_2_layer = list()
+        fraction_of_train_samples_space = np.geomspace(0.01, .1, num=10)
+        for fraction_of_train_samples in fraction_of_train_samples_space:
+            conv_rf_2l = ConvRFClassifier.ConvRFClassifier(layers = 2, kernel_size = (10, 5), stride = (2, 1))
+            best_accuracy = np.mean([run_rf(conv_rf_2l, cifar_train_images, cifar_train_labels, cifar_test_images, cifar_test_labels, fraction_of_train_samples) for _ in range(2)])
+            conv_rf_2_layer.append(best_accuracy)
+            print("Train Fraction:", str(fraction_of_train_samples))
+            print("Accuracy:", str(best_accuracy))
+            
+          
+        # accuracy vs num training samples (naive_rf)
+        conv_rf_apply = list()
+        fraction_of_train_samples_space = np.geomspace(0.01, .1, num=10)
+        for fraction_of_train_samples in fraction_of_train_samples_space:
+            conv_rf_a = ConvRFClassifier.ConvRFClassifier(layers = 1, kernel_size = (10,), stride = (2,))
+            best_accuracy = np.mean([run_rf(conv_rf_a, cifar_train_images, cifar_train_labels, cifar_test_images, cifar_test_labels, fraction_of_train_samples) for _ in range(2)])
+            conv_rf_apply.append(best_accuracy)
+            print("Train Fraction:", str(fraction_of_train_samples))
+            print("Accuracy:", str(best_accuracy))
+        
+            
+        # accuracy vs num training samples (one layer cnn (32 filters))
+        cnn32_acc_vs_n = list()
+        fraction_of_train_samples_space = np.geomspace(0.01, .1, num=10)
+        for fraction_of_train_samples in fraction_of_train_samples_space:
+            best_accuracy = np.mean([run_cnn(SimpleCNN32Filter, cifar_train_images, cifar_train_labels, cifar_test_images, cifar_test_labels, fraction_of_train_samples) for _ in range(2)])
+            cnn32_acc_vs_n.append(best_accuracy)
+            print("Train Fraction:", str(fraction_of_train_samples))
+            print("Accuracy:", str(best_accuracy))
+            
+        
+        # accuracy vs num training samples (two layer cnn (32 filters))
+        cnn32_two_layer_acc_vs_n = list()
+        fraction_of_train_samples_space = np.geomspace(0.01, .1, num=10)
+        for fraction_of_train_samples in fraction_of_train_samples_space:
+            best_accuracy = np.mean([run_cnn(SimpleCNN32Filter2Layers, cifar_train_images, cifar_train_labels, cifar_test_images, cifar_test_labels, fraction_of_train_samples) for _ in range(3)])
+            cnn32_two_layer_acc_vs_n.append(best_accuracy)
+            print("Train Fraction:", str(fraction_of_train_samples))
+            print("Accuracy:", str(best_accuracy))
+            
+            
+        plt.rcParams['figure.figsize'] = 13, 10
+        plt.rcParams['font.size'] = 25
+        plt.rcParams['legend.fontsize'] = 16.5
+        plt.rcParams['legend.handlelength'] = 2.5
+        plt.rcParams['figure.titlesize'] = 20
+        plt.rcParams['xtick.labelsize'] = 15
+        plt.rcParams['ytick.labelsize'] = 15
+        
+        fig, ax = plt.subplots() # create a new figure with a default 111 subplot
+        ax.plot(fraction_of_train_samples_space*100, naive_rf_acc_vs_n, marker='X', markerfacecolor='red', markersize=10, color='green', linewidth=3, linestyle=":", label="Naive RF")
+        ax.plot(fraction_of_train_samples_space*100, conv_rf_apply, marker='X', markerfacecolor='red', markersize=10, color='green', linewidth=3, linestyle="--", label="Conv RF")
+        ax.plot(fraction_of_train_samples_space*100, conv_rf_2_layer, marker='X', markerfacecolor='red', markersize=10, color='green', linewidth=3, label="Conv RF 2 layer")
+        
+        #ax.plot(fraction_of_train_samples_space*100, conv_rf_predict_proba, marker='X', markerfacecolor='red', markersize=10, color='orange', linewidth=3, linestyle=":", label="Conv RF predict_proba")
+        ax.plot(fraction_of_train_samples_space*100, cnn32_acc_vs_n, marker='X', markerfacecolor='red', markersize=10, color='orange', linewidth=3, linestyle="--", label="CNN (32 filters)")
+        ax.plot(fraction_of_train_samples_space*100, cnn32_two_layer_acc_vs_n, marker='X', markerfacecolor='red', markersize=10, color='orange', linewidth=3, label="CNN Two Layer (32 filters)")
+        
+        ax.set_xlabel('Percentage of Train Samples', fontsize=18)
+        ax.set_xscale('log')
+        ax.set_xticks([i*100 for i in list(np.geomspace(0.01, 1.0, num=10))])
+        ax.get_xaxis().set_major_formatter(matplotlib.ticker.ScalarFormatter())
+        
+        ax.set_ylabel('Accuracy', fontsize=18)
+        
+        ax.set_title(class1, " (", names[class1], ") vs ", class2, "(", names[class2], ") classification", fontsize=18)
+        plt.legend()
+        plt.savefig(str(class1) + "_vs_" + str(class2))
 
