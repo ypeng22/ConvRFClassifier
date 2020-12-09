@@ -12,7 +12,7 @@ import torch.nn.functional as F
 import ConvRFClassifier
 import matplotlib.pyplot as plt
 import matplotlib
-
+import pandas as pd
 import seaborn as sns; sns.set()
 plt.rcParams["legend.loc"] = "best"
 plt.rcParams['figure.facecolor'] = 'white'
@@ -272,4 +272,11 @@ for class1 in range(10):
         ax.set_title(str(class1) + " (" + names[class1] + ") vs " + str(class2) + "(" + names[class2] + ") classification", fontsize=18)
         plt.legend()
         plt.savefig("cifar_results/" + str(class1) + "_vs_" + str(class2))
-
+        table = pd.DataFrame(np.concatenate(([naive_rf_acc_vs_n], [conv_rf_apply], [conv_rf_2_layer], [cnn_acc_vs_n], [cnn32_acc_vs_n],[cnn32_two_layer_acc_vs_n]), axis=0))
+        algos = ['naiveRF', 'convrf', 'convrf2layer', 'simplecnn', 'cnn32', 'cnn32_2layer']
+        table['algos'] = algos
+        cols = table.columns.tolist()
+        cols = [cols[-1]] + cols[:-1]
+        cols = pd.Index(cols)
+        table = table[cols]
+        table.to_csv("cifar_results/" + str(class1) + "_vs_" + str(class2) + ".csv", index=False)
